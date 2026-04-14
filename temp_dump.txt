@@ -1,0 +1,189 @@
+﻿#  LEFT COLUMN â€” Input Panel
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+with col_left:
+    st.markdown('<div class="card-title">ðŸ“ Upload X-Ray</div>', unsafe_allow_html=True)
+    uploaded_file = st.file_uploader("", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+
+    if uploaded_file:
+        img = Image.open(uploaded_file)
+        st.session_state.uploaded_image = img
+        st.image(img, use_container_width=True, caption="Uploaded X-Ray")
+
+    st.markdown("<hr class='divider'>", unsafe_allow_html=True)
+    st.markdown('<div class="card-title">ðŸ©º Patient Details</div>', unsafe_allow_html=True)
+
+    p_name    = st.text_input("Patient Name", placeholder="e.g. John Doe")
+    p_age     = st.number_input("Age", min_value=1, max_value=120, value=35)
+    p_gender  = st.selectbox("Gender", ["Male", "Female", "Other"])
+    p_body    = st.selectbox("Body Part / Study", ["Chest", "Spine", "Hand / Wrist", "Knee", "Skull", "Pelvis", "Abdomen"])
+    p_history = st.text_area("Patient History & Symptoms", placeholder="e.g. Persistent cough for 3 weeks, mild fever, no prior lung conditions...", height=110)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    generate_btn = st.button("ðŸ”¬ Generate Radiology Report")
+
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+#  RIGHT COLUMN â€” Output Panel
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+with col_right:
+
+    # â”€â”€ Generate Report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    if generate_btn:
+        if not uploaded_file:
+            st.error("Please upload an X-ray image first.")
+        else:
+            with st.spinner("Analyzing X-ray with AI..."):
+                patient_ctx = f"""
+Patient Name: {p_name}
+Age: {p_age}, Gender: {p_gender}
+Study: {p_body} X-Ray
+History & Symptoms: {p_history or 'Not provided'}
+"""
+                system_prompt = f"""
+You are an expert radiologist AI assistant. Analyze the provided X-ray image along with the patient information below and generate a structured radiology report.
+
+{patient_ctx}
+
+Return your response in EXACTLY this format (use these section headers):
+
+FINDINGS:
+<detailed description of what you observe in the X-ray>
+
+ANOMALIES:
+- <anomaly description> | <MILD or MODERATE or SEVERE>
+- <anomaly description> | <MILD or MODERATE or SEVERE>
+(list all detected anomalies, or write "None detected" if clear)
+
+DIAGNOSES:
+- <diagnosis name> | <confidence 0-99>
+- <diagnosis name> | <confidence 0-99>
+(list top 3-5 differential diagnoses with percentage likelihood)
+
+RECOMMENDATIONS:
+<suggested next steps, follow-up tests, or clinical advice>
+
+Be specific, medically accurate, and professional. If the image is not a medical X-ray, say so clearly in FINDINGS.
+"""
+                response = model.generate_content([st.session_state.uploaded_image, system_prompt])
+                raw = response.text
+                parsed = parse_report(raw)
+
+                # Draw heatmap
+                heatmap = draw_heatmap(st.session_state.uploaded_image, parsed["anomalies"])
+                st.session_state.heatmap_image = heatmap
+                st.session_state.report_data = parsed
+                st.session_state.raw_report = raw
+                st.session_state.patient_info = {
+                    "Name": p_name or "N/A",
+                    "Age": p_age,
+                    "Gender": p_gender,
+                    "Study": p_body
+                }
+                st.session_state.chat_history = []
+
+    # â”€â”€ Display Report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    if st.session_state.report_data:
+        rd = st.session_state.report_data
+
+        # Heatmap
+        if st.session_state.heatmap_image and rd["anomalies"]:
+            st.markdown('<div class="card-title">ðŸ”´ Anomaly Heatmap</div>', unsafe_allow_html=True)
+            st.image(st.session_state.heatmap_image, use_container_width=True)
+            st.markdown('<div class="heatmap-note">AI-highlighted regions of interest (approximate)</div>', unsafe_allow_html=True)
+            st.markdown("<hr class='divider'>", unsafe_allow_html=True)
+
+        # Findings
+        st.markdown('<div class="section-header">ðŸ“‹ Findings</div>', unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#94a3b8;font-size:0.9rem;line-height:1.6'>{rd['findings'] or 'No findings extracted.'}</p>", unsafe_allow_html=True)
+
+        # Anomalies
+        st.markdown('<div class="section-header">âš ï¸ Anomalies Detected</div>', unsafe_allow_html=True)
+        if rd["anomalies"]:
+            for a in rd["anomalies"]:
+                st.markdown(f"""
+                <div class="anomaly-item">
+                    <span style="font-size:0.88rem;color:#e2e8f0">{a['name']}</span>
+                    {severity_badge(a['severity'])}
+                </div>""", unsafe_allow_html=True)
+        else:
+            st.markdown("<p style='color:#86efac;font-size:0.9rem'>âœ… No significant anomalies detected.</p>", unsafe_allow_html=True)
+
+        # Differential Diagnoses with confidence bars
+        st.markdown('<div class="section-header">ðŸ”¬ Differential Diagnoses</div>', unsafe_allow_html=True)
+        if rd["diagnoses"]:
+            for d in sorted(rd["diagnoses"], key=lambda x: x["confidence"], reverse=True):
+                conf = d["confidence"]
+                st.markdown(f"""
+                <div class="conf-row">
+                    <div class="conf-label">{d['name']} <span style="color:#60a5fa;font-weight:600">{conf}%</span></div>
+                    <div class="conf-bar-bg">
+                        <div class="conf-bar-fill" style="width:{conf}%"></div>
+                    </div>
+                </div>""", unsafe_allow_html=True)
+        else:
+            st.markdown("<p style='color:#94a3b8;font-size:0.9rem'>No differential diagnoses generated.</p>", unsafe_allow_html=True)
+
+        # Recommendations
+        st.markdown('<div class="section-header">âœ… Recommendations</div>', unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#94a3b8;font-size:0.9rem;line-height:1.6'>{rd['recommendations'] or 'N/A'}</p>", unsafe_allow_html=True)
+
+        st.markdown("<hr class='divider'>", unsafe_allow_html=True)
+
+        # â”€â”€ PDF Download â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        pdf_buf = generate_pdf(st.session_state.patient_info, rd, st.session_state.get("raw_report", ""))
+        st.download_button(
+            label="ðŸ“„ Download Report as PDF",
+            data=pdf_buf,
+            file_name=f"radiology_report_{p_name or 'patient'}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+
+        st.markdown("<hr class='divider'>", unsafe_allow_html=True)
+
+        # â”€â”€ Follow-Up Chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        st.markdown('<div class="card-title">ðŸ’¬ Ask Follow-Up Questions</div>', unsafe_allow_html=True)
+
+        # Display chat history
+        if st.session_state.chat_history:
+            st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+            for msg in st.session_state.chat_history:
+                if msg["role"] == "user":
+                    st.markdown(f'<div class="chat-user">ðŸ§‘â€âš•ï¸ {msg["content"]}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<div class="chat-ai">ðŸ¤– {msg["content"]}</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        follow_q = st.text_input("Ask about this report...", placeholder="e.g. Should I order a CT scan next?", key="chat_input")
+        if st.button("Send âž¤") and follow_q.strip():
+            with st.spinner("Thinking..."):
+                context = f"""
+You are a radiologist AI. You already analyzed an X-ray and produced this report:
+
+{st.session_state.get('raw_report', '')}
+
+Patient: {st.session_state.patient_info}
+
+Now answer the following follow-up question concisely and medically accurately:
+{follow_q}
+"""
+                chat_response = model.generate_content(context)
+                st.session_state.chat_history.append({"role": "user", "content": follow_q})
+                st.session_state.chat_history.append({"role": "assistant", "content": chat_response.text})
+                st.rerun()
+
+    else:
+        # Placeholder state
+        st.markdown("""
+        <div style="text-align:center;padding:4rem 2rem;color:#334155;">
+            <div style="font-size:3.5rem;margin-bottom:1rem">ðŸ«</div>
+            <div style="font-family:'DM Serif Display',serif;font-size:1.4rem;color:#475569">Upload an X-ray to begin</div>
+            <div style="font-size:0.85rem;margin-top:0.5rem">Fill in patient details and click Generate Report</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# â”€â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+st.markdown("""
+<div style="text-align:center;padding:2rem 0 1rem;color:#1e293b;font-size:0.75rem;">
+    RadiologyAI Â· AI-assisted analysis only Â· Always verify with a qualified radiologist
+</div>
+""", unsafe_allow_html=True)
