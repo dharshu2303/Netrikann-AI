@@ -1,2 +1,10 @@
 flask
 google-generativeai
+fpdf
+Pillow
+streamlit
+ultralytics
+gTTS
+googletrans
+SpeechRecognition
+requests
