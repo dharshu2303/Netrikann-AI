@@ -14,7 +14,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-g.configure(api_key="AIzaSyA2E8zi6nQcUnRJ3pmDwfrlNHSyd9j7Cd8")
+g.configure(api_key="api_key")
 model = g.GenerativeModel("gemini-2.5-flash")
 
 st.markdown("""
