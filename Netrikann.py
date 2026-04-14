@@ -18,8 +18,9 @@ st.set_page_config(
 if "ENCRYPTION_KEY" in st.secrets:
     api_key = st.secrets["ENCRYPTION_KEY"]
 else:
-    st.error("🔑 **API Key Missing!** Please add `ENCRYPTION_KEY` to your Streamlit Secrets.")
-    st.info("Go to: **Settings** -> **Secrets** and add: `ENCRYPTION_KEY = 'your_api_key_here'`")
+    st.error("🔑 **API Key Missing!**")
+    st.write(f"Available keys in secrets: `{list(st.secrets.keys())}`")
+    st.info("Please add `ENCRYPTION_KEY` to your Streamlit Cloud Secrets (TOML format).")
     st.stop()
 
 g.configure(api_key=api_key)
