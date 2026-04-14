@@ -14,7 +14,15 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-g.configure(api_key=st.secrets["ENCRYPTION_KEY"])
+# Securely fetch API Key from Streamlit Secrets
+if "ENCRYPTION_KEY" in st.secrets:
+    api_key = st.secrets["ENCRYPTION_KEY"]
+else:
+    st.error("🔑 **API Key Missing!** Please add `ENCRYPTION_KEY` to your Streamlit Secrets.")
+    st.info("Go to: **Settings** -> **Secrets** and add: `ENCRYPTION_KEY = 'your_api_key_here'`")
+    st.stop()
+
+g.configure(api_key=api_key)
 model = g.GenerativeModel("gemini-2.5-flash")
 
 st.markdown("""
