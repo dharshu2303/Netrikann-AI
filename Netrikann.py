@@ -14,16 +14,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-# Securely fetch API Key from Streamlit Secrets
-if "ENCRYPTION_KEY" in st.secrets:
-    api_key = st.secrets["ENCRYPTION_KEY"]
-else:
-    st.error("🔑 **API Key Missing!**")
-    st.write(f"Available keys in secrets: `{list(st.secrets.keys())}`")
-    st.info("Please add `ENCRYPTION_KEY` to your Streamlit Cloud Secrets (TOML format).")
-    st.stop()
-
-g.configure(api_key=api_key)
+g.configure(api_key="AIzaSyA2Ny9KdToRpW0kXMuq8B82FVxoWCDC-60")
 model = g.GenerativeModel("gemini-2.5-flash")
 
 st.markdown("""
