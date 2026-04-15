@@ -1,6 +1,6 @@
 flask
 google-generativeai
 fpdf
-PIL
+Pillow
 streamlit
 python-dotenv
