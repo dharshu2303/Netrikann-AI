@@ -3,4 +3,4 @@ google-generativeai
 fpdf
 PIL
 streamlit
-python-dotenv
+python-dotenv

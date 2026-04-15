@@ -10,7 +10,6 @@ import random
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 st.set_page_config(
@@ -19,14 +18,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-# Configure API Key
 api_key = os.getenv("GEMINI_API_KEY")
-if not api_key:
-    st.error("GEMINI_API_KEY not found. Please set it in your environment variables or .env file.")
-    st.stop()
-
 g.configure(api_key=api_key)
-model = g.GenerativeModel("gemini-1.5-flash") # Use 1.5-flash as 2.5-flash is not valid
+model = g.GenerativeModel("gemini-2.5-flash")
 
 st.markdown("""
 <style>
